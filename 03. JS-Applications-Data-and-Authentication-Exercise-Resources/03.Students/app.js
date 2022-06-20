@@ -36,6 +36,7 @@ async function creatNewStudent(event){
     }
     let postRequest=await fetch(urlForStudents,options);
     createNewRow(student);
+     document.querySelectorAll("input").forEach((i)=>i.value="");
 
 }
 
