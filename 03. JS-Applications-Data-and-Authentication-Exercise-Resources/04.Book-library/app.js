@@ -1,91 +1,102 @@
+let url = "http://localhost:3030/jsonstore/collections/books/";
+let tableBody=document.querySelector("tbody");
+
+async function getAllBooks() {
+  let response;
+  let requestForAllBooks = await fetch(url);
+  try {
+    response = await requestForAllBooks.json();
+  } catch (err) {
+    response = err;
+  }
+  return response;
+}
 document.getElementById("loadBooks").addEventListener("click",loadAllBooks);
-let urlForAllBooks="http://localhost:3030/jsonstore/collections/books/";
-
-document.getElementById("submit").addEventListener("click",createNewBook);
-let form=document.getElementById("form");
-let tbody=document.querySelector('tbody');
-
-
-
-
 
 async function loadAllBooks() {
-    let requestBooks=await fetch(urlForAllBooks);
-    let responseBooks=await requestBooks.json();
-    let allBooks=Object.entries(responseBooks);
-    allBooks.forEach((b)=>createNewRow(b));
+    tableBody.replaceChildren();
+   let objAllBooks= await getAllBooks();
+   let arrAllBooks=Object.entries(objAllBooks);
+   arrAllBooks.forEach((b)=>createNewTableRow(b));
+   //
 }
 
-function createNewRow(data){
-    let[id,book]=data;
-    let newRow = document.createElement('tr');
-    newRow.innerHTML = `
-    <td id="title">${book.title}</td>
-    <td id="author">${book.author}</td>
+function createNewTableRow(book){
+    let[id,dataBook]=book;
+
+    let row=document.createElement("tr");
+    row.innerHTML=` <td>${dataBook.title}</td>
+    <td>${dataBook.author}</td>
     <td data-id="${id}">
-        <button  id="edit">Edit</button>
-        <button id="delete">Delete</button>
-    </td>`
-    tbody.appendChild(newRow);
-    
-    document.getElementById("edit").addEventListener("click",editBook);
-    document.getElementById("delete").addEventListener("click",deleteBook);
-
+        <button id="editBtn${id}">Edit</button>
+        <button id="deleteBtn${id}">Delete</button>
+    </td>`;
+    tableBody.appendChild(row);
+document.getElementById(`editBtn${id}`).addEventListener('click',editBook);
+document.getElementById(`deleteBtn${id}`).addEventListener('click',deleteBook);
 }
 
-async function createNewBook(event){
+document.getElementById("submit").addEventListener("click",addNewBook);
+
+async function addNewBook(event) {
     event.preventDefault();
-    let formData=new FormData(form);
 
-    let author=formData.get("author");
-    let title=formData.get("title");
-let newBook={author,title};
-    let options={
-        method: "post",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newBook)
-    };
+    let form=document.getElementById("form");
+    let dataForm=new FormData(form);
+    let title=dataForm.get("title").trim();
+    let author=dataForm.get("author").trim();
 
-    let requestForBook=await fetch(urlForAllBooks,options);
-    let responseForBook= await requestForBook.json();
-    let id=responseForBook._id;
-   
-    createNewRow([id,newBook]);
-    document.querySelectorAll("#form input").forEach(i=>i.value="");
+    if(title&&author){
+        let newBook={author,title};
+        let options={
+            method: 'post',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body:JSON.stringify(newBook)
+        }
+
+        let requestToCreateNewBook=await fetch(url,options);
+        let responseForNewBook=await requestToCreateNewBook;
+        let id=responseForNewBook._id;
+
+        createNewTableRow([id,newBook]);
+    }
+    document.querySelectorAll("input").forEach(i=>i.value='');
+    
 }
-
-async function deleteBook(event){
-    let parent=event.target.parentNode
-    let id=parent.dataset.id;
-    let currentRow=parent.parentNode;
-
-    let deleteBook=await fetch(urlForAllBooks+id,{method:"delete"});
-    currentRow.remove();
-
-}
-
 async function editBook(event){
-    let parent=event.target.parentNode
+    let parent=event.target.parentNode;
+    let parentOfRow=parent.parentNode;
+    let currentId=parent.dataset.id;
+
+    let form=document.getElementById("form");
+    let dataForm=new FormData(form);
+    let title=dataForm.get("title").trim();
+    let author=dataForm.get("author").trim();
+
+    if(title&&author){
+        let newBook={author,title};
+        let options={
+            method: 'put',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body:JSON.stringify(newBook)
+        }
+    
+        let requestToCreateNewBook=await fetch(url+currentId,options);
+        
+        parentOfRow.querySelector("tr td").textContent=title;
+        parentOfRow.querySelector("tr td:nth-child(2)").textContent=author;
+    }
+    document.querySelectorAll("input").forEach(i=>i.value='');
+
+}
+async function deleteBook(event){
+    let parent=event.target.parentNode;
     let id=parent.dataset.id;
-    let currentRow=parent.parentNode;
 
-    let formData=new FormData(form);
-
-    let author=formData.get("author");
-    let title=formData.get("title");
-    let newBook={title,author};
-    let options={
-        method: "put",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newBook)
-    };
-
-    let requestEditBook=await fetch(urlForAllBooks+id,options);
-currentRow.querySelector("#author").textContent =author;
-currentRow.querySelector("#title").textContent =title;
-document.querySelectorAll("#form input").forEach(i=>i.value="")
+    let requestToDeleteBook=await fetch(url+id,{method:"delete"});
+    loadAllBooks();
 }
